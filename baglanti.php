@@ -1,15 +1,21 @@
 <?php
-// Veritabanı bağlantı ayarları
-$host = "localhost";
-$dbname = "notlar";
-$username = "root";   // Ampps'de genellikle root
-$password = "";       // Ampps'de varsayılan şifre boş
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+
+$servername = "localhost";
+$username = "yeni_kullanici";
+$password = "12345678";
+$vt = "notlar";
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
-    // Hata modu aktif
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("Veritabanı bağlantı hatası: " . $e->getMessage());
+    $baglanti = new mysqli($servername, $username, $password, $vt);
+    mysqli_set_charset($baglanti, "UTF8");
+    
+    if ($baglanti->connect_error) {
+        throw new Exception("Veritabanı bağlantı hatası: " . $baglanti->connect_error);
+    }
+} catch (Exception $e) {
+    die("Bağlantı hatası: " . $e->getMessage());
 }
 ?>
