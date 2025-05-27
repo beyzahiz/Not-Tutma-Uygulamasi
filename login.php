@@ -1,10 +1,19 @@
 <?php
+session_start();
+if (empty($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 include("baglanti.php");
 $username_err = "";
 $parola_err = "";
 $calistirekle = false; // Varsayılan olarak false tanımla
 
 if (isset($_POST["giris"])) {
+    // CSRF kontrolü
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+      die("Geçersiz istek! CSRF doğrulaması başarısız.");
+  }
+
     // Kullanıcı adı doğrulama kısmı
     if (empty($_POST["kullaniciadi"])) {
         $username_err = "Kullanıcı adı boş geçilemez!";
@@ -32,8 +41,8 @@ if (isset($_POST["giris"])) {
             $db_password = $ilgilikayit["parola"]; // Veritabanındaki şifreyi al
 
             // Parola doğrulama (Düz metin karşılaştırması)
-            if ($password === $db_password) {
-              session_start(); // Oturumu başlat
+            if (password_verify($password, $db_password)) {
+
               $_SESSION["user_id"] = $ilgilikayit["id"];  
                 $_SESSION["username"] = $ilgilikayit["kullanici_adi"];
                 $_SESSION["email"] = $ilgilikayit["email"];
@@ -63,6 +72,8 @@ if (isset($_POST["giris"])) {
    <div class="container p-5">
      <div class="card p-5">
      <form action="login.php" method="POST">
+     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>"> 
+
      <div class="mb-3">
         <label for="exampleInputEmail1" class="form-label">Kullanıcı Adı</label>
         <input type="text" class="form-control <?php if (!empty($username_err)) { echo 'is-invalid'; } ?>" name="kullaniciadi" id="exampleInputEmail1">

@@ -1,5 +1,8 @@
 <?php
-
+session_start();
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 include("baglanti.php");
 $username_err="";
 $email_err="";
@@ -8,6 +11,9 @@ $parolatkr_err="";
 $calistirekle = false; // Varsayılan olarak false tanımla
 
 if (isset($_POST["kaydet"])) {
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("Geçersiz istek! CSRF token doğrulaması başarısız.");
+    }
     // Kullanıcı adı doğrulama kısmı
     if (empty($_POST["kullaniciadi"])) {
         $username_err = "Kullanıcı adı boş geçilemez!";
@@ -49,10 +55,14 @@ if (isset($_POST["kaydet"])) {
         $email = $_POST["email"];
         $password = $_POST["parola"];
         $parolatkr=$_POST["parolatkr"];
-        
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
         // Veritabanına ekleme işlemi
-        $ekle = "INSERT INTO users (kullanici_adi, email, parola) VALUES ('$name','$email','$password')";
-        $calistirekle = mysqli_query($baglanti, $ekle);
+        $stmt = $baglanti->prepare("INSERT INTO users (kullanici_adi, email, parola) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $name, $email, $hashed_password);
+        $calistirekle = $stmt->execute();
+        $stmt->close();
+        
     }
     
     // Hata mesajı veya başarılı işlem bildirimi
@@ -80,6 +90,7 @@ if (isset($_POST["kaydet"])) {
    <div class="container p-5">
      <div class="card p-5">
      <form action="kayit.php" method="POST">
+     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
      <div class="mb-3">
     <label for="exampleInputEmail1" class="form-label">Kullanıcı Adı</label>
     <input type="text" class="form-control <?php 

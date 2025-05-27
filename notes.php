@@ -1,5 +1,8 @@
 <?php
 session_start();
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 include ("baglanti.php"); // Veritabanı bağlantısı
 
 // Şifre çözme fonksiyonu
@@ -13,6 +16,9 @@ $key = 'gizli_anahtar123';
 
 // Not silme işlemi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("Geçersiz CSRF token. İşlem iptal edildi.");
+    }
     $delete_id = intval($_POST['delete_id']);
     $stmt = $baglanti->prepare("DELETE FROM notes WHERE id = ? AND user_id = ?");
     $stmt->bind_param("ii", $delete_id, $_SESSION['user_id']);
@@ -26,6 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['note'])) {
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("Geçersiz CSRF token. İşlem iptal edildi.");
+    }
+
     $note = $_POST['note'];
     $key = 'gizli_anahtar123'; // Anahtar sabit kalabilir
 
@@ -114,6 +124,7 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
         <div class="mb-4">
             <h2>Not Ekle</h2>
             <form method="post" action="" class="note-card">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <div class="mb-3">
                     <textarea name="note" class="form-control" rows="4" required 
                               placeholder="Notunuzu buraya yazın..."></textarea>
@@ -133,6 +144,7 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
                 <?php echo nl2br(htmlspecialchars($decrypted)); ?>
         <form method="post" action="" style="display: inline;">
         <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
+        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
         <button type="submit" class="btn btn-link text-danger p-0 float-end" title="Sil">
             <i class="fas fa-trash-alt"></i>
             </button>
