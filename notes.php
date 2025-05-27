@@ -131,9 +131,11 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
             ?>
                 <div class="note-card">
                 <?php echo nl2br(htmlspecialchars($decrypted)); ?>
-        <form method="post" action="" style="margin-top:10px;">
-            <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
-            <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+        <form method="post" action="" style="display: inline;">
+        <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
+        <button type="submit" class="btn btn-link text-danger p-0 float-end" title="Sil">
+            <i class="fas fa-trash-alt"></i>
+            </button>
         </form>
                 </div>
             <?php endwhile; ?>
