@@ -10,6 +10,21 @@ function decryptNote($encryptedNote, $iv_hex, $key) {
 
 $key = 'gizli_anahtar123';
 // Not kaydedildi mi kontrol et
+
+// Not silme işlemi
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    $delete_id = intval($_POST['delete_id']);
+    $stmt = $baglanti->prepare("DELETE FROM notes WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $delete_id, $_SESSION['user_id']);
+    $stmt->execute();
+    $stmt->close();
+    
+    // Silme işleminden sonra sayfayı yenile
+    header("Location: notes.php");
+    exit();
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['note'])) {
     $note = $_POST['note'];
     $key = 'gizli_anahtar123'; // Anahtar sabit kalabilir
@@ -115,7 +130,11 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
                $decrypted = decryptNote($row['note'], $row['iv'], $key);
             ?>
                 <div class="note-card">
-                    <?php echo nl2br(htmlspecialchars($decrypted)); ?>
+                <?php echo nl2br(htmlspecialchars($decrypted)); ?>
+        <form method="post" action="" style="margin-top:10px;">
+            <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
+            <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+        </form>
                 </div>
             <?php endwhile; ?>
         <?php endif; ?>
