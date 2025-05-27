@@ -1,27 +1,33 @@
 <?php
 session_start();
 include ("baglanti.php"); // Veritabanı bağlantısı
+
+// Şifre çözme fonksiyonu
+function decryptNote($encryptedNote, $iv_hex, $key) {
+    $iv = hex2bin($iv_hex);
+    return openssl_decrypt($encryptedNote, 'AES-128-CTR', $key, 0, $iv);
+}
+
+$key = 'gizli_anahtar123';
 // Not kaydedildi mi kontrol et
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['note'])) {
     $note = $_POST['note'];
-    $key = 'gizli_anahtar123'; // Şifreleme anahtarı
-    $iv = '1234567891011121';  // IV 16 karakter olmalı
+    $key = 'gizli_anahtar123'; // Anahtar sabit kalabilir
 
+    $iv = openssl_random_pseudo_bytes(16); // Rastgele IV üret
     $encryptedNote = openssl_encrypt($note, 'AES-128-CTR', $key, 0, $iv);
+    $iv_hex = bin2hex($iv); // IV'yi hex formatına çevir (veritabanına kaydetmek için)
 
-    $stmt = $baglanti->prepare("INSERT INTO notes (user_id, note) VALUES (?, ?)");
-    $stmt->bind_param("is", $_SESSION['user_id'], $encryptedNote);
+    $stmt = $baglanti->prepare("INSERT INTO notes (user_id, note, iv) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $_SESSION['user_id'], $encryptedNote, $iv_hex);
     $stmt->execute();
     $stmt->close();
 }
 
+
 // Notları çek ve çöz
 $user_id = $_SESSION['user_id'];
-$key = 'gizli_anahtar123';
-$iv = '1234567891011121';
-
 $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
-
 ?>
 
 <!DOCTYPE html>
@@ -106,7 +112,7 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
             <div class="alert alert-info">Henüz not eklenmemiş.</div>
         <?php else: ?>
             <?php while ($row = $result->fetch_assoc()): 
-                $decrypted = decryptNote($row['note'], $row['iv'], $_SESSION['user_id'], $_SESSION['email']);
+               $decrypted = decryptNote($row['note'], $row['iv'], $key);
             ?>
                 <div class="note-card">
                     <?php echo nl2br(htmlspecialchars($decrypted)); ?>
