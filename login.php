@@ -76,17 +76,23 @@ if (isset($_POST["giris"])) {
 
      <div class="mb-3">
         <label for="exampleInputEmail1" class="form-label">Kullanıcı Adı</label>
-        <input type="text" class="form-control <?php if (!empty($username_err)) { echo 'is-invalid'; } ?>" name="kullaniciadi" id="exampleInputEmail1">
-        <div id="validationServer03Feedback" class="invalid-feedback">
-          <?php echo $username_err; ?>
-        </div>
+        <input type="text" class="form-control <?php if (!empty($username_err)) { echo 'is-invalid'; } ?>"
+       name="kullaniciadi"
+       id="exampleInputEmail1"
+       value="<?php echo isset($_POST['kullaniciadi']) ? htmlspecialchars($_POST['kullaniciadi']) : ''; ?>">
+
+       <div id="validationServer03Feedback" class="invalid-feedback">
+        <?php echo htmlspecialchars($username_err); ?>
+      </div>
+
       </div>
       <div class="mb-3">
         <label for="exampleInputPassword1" class="form-label">Parola</label>
         <input type="password" class="form-control <?php if (!empty($parola_err)) { echo 'is-invalid'; } ?>" name="parola" id="exampleInputPassword1">
         <div id="validationServer03Feedback" class="invalid-feedback">
-          <?php echo $parola_err; ?>
+          <?php echo htmlspecialchars($parola_err); ?>
         </div>
+
       </div>
       <button type="submit" name="giris" class="btn btn-primary">GİRİŞ YAP</button>
       <p class="text-center mt-3">

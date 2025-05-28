@@ -99,7 +99,7 @@ if (isset($_POST["kaydet"])) {
         } 
     ?>" id="exampleInputEmail1" aria-describedby="emailHelp" name="kullaniciadi">
     <div id="validationServer03Feedback" class="invalid-feedback">
-      <?php echo $username_err; ?>
+    <?php echo htmlspecialchars($username_err); ?>
     </div>
   </div>
   <div class="mb-3">
@@ -111,7 +111,7 @@ if (isset($_POST["kaydet"])) {
         } 
     ?>" id="exampleInputEmail1" aria-describedby="emailHelp" name="email">
     <div id="validationServer03Feedback" class="invalid-feedback">
-       <?php echo $email_err; ?>
+    <?php echo htmlspecialchars($email_err); ?>
     </div>
 </div>
 
@@ -123,7 +123,7 @@ if (isset($_POST["kaydet"])) {
         } 
     ?>" id="exampleInputPassword1" name="parola">
     <div id="validationServer03Feedback" class="invalid-feedback">
-      <?php echo $parola_err; ?>
+    <?php echo htmlspecialchars($parola_err); ?>
     </div>
   </div>
   <div class="mb-3">
@@ -134,7 +134,7 @@ if (isset($_POST["kaydet"])) {
         } 
     ?>" id="exampleInputPassword1" name="parolatkr">
     <div id="validationServer03Feedback" class="invalid-feedback">
-      <?php echo $parolatkr_err; ?>
+    <?php echo htmlspecialchars($parolatkr_err); ?>
     </div>
   </div>
   <button type="submit" name="kaydet" class="btn btn-primary">KAYDET</button>
