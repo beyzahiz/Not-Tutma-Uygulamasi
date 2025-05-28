@@ -6,59 +6,64 @@ if (empty($_SESSION['csrf_token'])) {
 include("baglanti.php");
 $username_err = "";
 $parola_err = "";
-$calistirekle = false; // Varsayılan olarak false tanımla
 
 if (isset($_POST["giris"])) {
     // CSRF kontrolü
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-      die("Geçersiz istek! CSRF doğrulaması başarısız.");
-  }
+        die("Geçersiz istek! CSRF doğrulaması başarısız.");
+    }
 
-    // Kullanıcı adı doğrulama kısmı
+    // Giriş verilerini doğrula
     if (empty($_POST["kullaniciadi"])) {
         $username_err = "Kullanıcı adı boş geçilemez!";
-    } 
-    
-    // Parola doğrulama
+    }
+
     if (empty($_POST["parola"])) {
         $parola_err = "Parola kısmı boş geçilemez!";
     } else if (strlen($_POST["parola"]) < 6) {
         $parola_err = "Parola en az 6 karakterden oluşmalıdır!";
     }
 
-    // Kullanıcı adı ve parola doğrulama
+    // Hatalar yoksa devam et
     if (empty($username_err) && empty($parola_err)) {
         $name = $_POST["kullaniciadi"];
         $password = $_POST["parola"];
-        
-        // Veritabanında kullanıcı adı kontrolü
-        $secim = "SELECT * FROM users WHERE kullanici_adi = '$name'";
-        $calistir = mysqli_query($baglanti, $secim);
-        
-        if (mysqli_num_rows($calistir) > 0) {
-            // Kullanıcı varsa
-            $ilgilikayit = mysqli_fetch_assoc($calistir); // Veritabanı kaydını al
-            $db_password = $ilgilikayit["parola"]; // Veritabanındaki şifreyi al
 
-            // Parola doğrulama (Düz metin karşılaştırması)
-            if (password_verify($password, $db_password)) {
+        // Güvenli sorgu
+        $stmt = $baglanti->prepare("SELECT id, kullanici_adi, email, parola FROM users WHERE kullanici_adi = ?");
+        if ($stmt) {
+            $stmt->bind_param("s", $name);
+            $stmt->execute();
+            $sonuc = $stmt->get_result();
 
-              $_SESSION["user_id"] = $ilgilikayit["id"];  
-                $_SESSION["username"] = $ilgilikayit["kullanici_adi"];
-                $_SESSION["email"] = $ilgilikayit["email"];
-                header("location: notes.php"); // Ana sayfaya yönlendir
-                exit();
+            if ($sonuc->num_rows > 0) {
+                $ilgilikayit = $sonuc->fetch_assoc();
+                $db_password = $ilgilikayit["parola"];
+
+                if (password_verify($password, $db_password)) {
+                    $_SESSION["user_id"] = $ilgilikayit["id"];
+                    $_SESSION["username"] = $ilgilikayit["kullanici_adi"];
+                    $_SESSION["email"] = $ilgilikayit["email"];
+                    unset($_SESSION['csrf_token']); // tokeni sıfırla
+                    header("location: notes.php");
+                    exit();
+                } else {
+                    echo '<div class="alert alert-danger" role="alert">Parola yanlış!</div>';
+                }
             } else {
-                echo '<div class="alert alert-danger" role="alert">Parola Yanlış!</div>';
+                echo '<div class="alert alert-danger" role="alert">Kullanıcı bulunamadı!</div>';
             }
+
+            $stmt->close();
         } else {
-            echo '<div class="alert alert-danger" role="alert">Kullanıcı adı yanlış!</div>';
+            echo '<div class="alert alert-danger" role="alert">Sorgu hazırlanamadı.</div>';
         }
     }
 
     mysqli_close($baglanti);
 }
 ?>
+
 
 <!doctype html>
 <html lang="en">

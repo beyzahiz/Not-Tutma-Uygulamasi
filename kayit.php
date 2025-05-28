@@ -49,24 +49,46 @@ if (isset($_POST["kaydet"])) {
         $parolatkr_err = "Parolalar birbirleriyle uyuşmuyor!";
     }
 
-    // Kayıt işlemi
-    if (empty($username_err) && empty($email_err) && empty($parola_err) && empty($parolatkr_err)) {
-        $name = $_POST["kullaniciadi"];
-        $email = $_POST["email"];
-        $password = $_POST["parola"];
-        $parolatkr=$_POST["parolatkr"];
-        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+// Kayıt işlemi
+if (empty($username_err) && empty($email_err) && empty($parola_err) && empty($parolatkr_err)) {
+    $name = $_POST["kullaniciadi"];
+    $email = $_POST["email"];
+    $password = $_POST["parola"];
+    $parolatkr = $_POST["parolatkr"];
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-        // Veritabanına ekleme işlemi
-        $stmt = $baglanti->prepare("INSERT INTO users (kullanici_adi, email, parola) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $name, $email, $hashed_password);
-        $calistirekle = $stmt->execute();
-        $stmt->close();
-        
+    // Kullanıcı adı veya e-mail veritabanında var mı kontrol et
+    $kontrol = $baglanti->prepare("SELECT id FROM users WHERE kullanici_adi = ? OR email = ?");
+    if ($kontrol) {
+        $kontrol->bind_param("ss", $name, $email);
+        $kontrol->execute();
+        $kontrol->store_result();
+
+        if ($kontrol->num_rows > 0) {
+            echo '<div class="alert alert-warning" role="alert">Bu kullanıcı adı veya e-mail zaten kayıtlı.</div>';
+            $kontrol->close();
+        } else {
+            $kontrol->close();
+
+            // Veritabanına ekleme işlemi
+            $stmt = $baglanti->prepare("INSERT INTO users (kullanici_adi, email, parola) VALUES (?, ?, ?)");
+            if ($stmt) {
+                $stmt->bind_param("sss", $name, $email, $hashed_password);
+                $calistirekle = $stmt->execute();
+                $stmt->close();
+            } else {
+                echo '<div class="alert alert-danger" role="alert">Veritabanına kayıt eklenirken bir hata oluştu.</div>';
+            }
+        }
+    } else {
+        echo '<div class="alert alert-danger" role="alert">Kayıt kontrolü sırasında bir hata oluştu.</div>';
     }
+}
+
     
     // Hata mesajı veya başarılı işlem bildirimi
     if ($calistirekle) {
+        unset($_SESSION['csrf_token']); // Token sıfırla
         header("Location: login.php");
         exit();
     } else {

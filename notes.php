@@ -1,5 +1,12 @@
 <?php
 session_start();
+
+// Kullanıcı girişi yapılmamışsa login sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -11,8 +18,8 @@ function decryptNote($encryptedNote, $iv_hex, $key) {
     return openssl_decrypt($encryptedNote, 'AES-128-CTR', $key, 0, $iv);
 }
 
-$key = 'gizli_anahtar123';
-// Not kaydedildi mi kontrol et
+$key = hash('sha256', 'gizli_salt' . $_SESSION['user_id']);
+
 
 // Not silme işlemi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
@@ -24,35 +31,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $stmt->bind_param("ii", $delete_id, $_SESSION['user_id']);
     $stmt->execute();
     $stmt->close();
-    
+
     // Silme işleminden sonra sayfayı yenile
     header("Location: notes.php");
     exit();
 }
 
-
+// Not ekleme ve şifreleme
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['note'])) {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         die("Geçersiz CSRF token. İşlem iptal edildi.");
     }
 
     $note = $_POST['note'];
-    $key = 'gizli_anahtar123'; // Anahtar sabit kalabilir
 
-    $iv = openssl_random_pseudo_bytes(16); // Rastgele IV üret
+    // 16 byte (128 bit) IV üret (AES-128 için uygun)
+    $iv = openssl_random_pseudo_bytes(16);
+    // Notu AES-128-CTR ile şifrele
     $encryptedNote = openssl_encrypt($note, 'AES-128-CTR', $key, 0, $iv);
-    $iv_hex = bin2hex($iv); // IV'yi hex formatına çevir (veritabanına kaydetmek için)
+    // IV'yi hex formatına çevir ve veritabanına kaydetmek için hazırla
+    $iv_hex = bin2hex($iv);
 
+    // Şifrelenmiş not ve IV veritabanına kaydediliyor
     $stmt = $baglanti->prepare("INSERT INTO notes (user_id, note, iv) VALUES (?, ?, ?)");
     $stmt->bind_param("iss", $_SESSION['user_id'], $encryptedNote, $iv_hex);
     $stmt->execute();
     $stmt->close();
 }
 
-
 // Notları çek ve çöz
 $user_id = $_SESSION['user_id'];
-$result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
+$stmt = $baglanti->prepare("SELECT * FROM notes WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
 ?>
 
 <!DOCTYPE html>
@@ -124,10 +137,9 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
         <div class="mb-4">
             <h2>Not Ekle</h2>
             <form method="post" action="" class="note-card">
-            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <div class="mb-3">
-                    <textarea name="note" class="form-control" rows="4" required 
-                              placeholder="Notunuzu buraya yazın..."></textarea>
+                    <textarea name="note" class="form-control" rows="4" required placeholder="Notunuzu buraya yazın..."></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">Notu Kaydet</button>
             </form>
@@ -137,18 +149,19 @@ $result = $baglanti->query("SELECT * FROM notes WHERE user_id = $user_id");
         <?php if ($result->num_rows == 0): ?>
             <div class="alert alert-info">Henüz not eklenmemiş.</div>
         <?php else: ?>
-            <?php while ($row = $result->fetch_assoc()): 
-               $decrypted = decryptNote($row['note'], $row['iv'], $key);
+            <?php while ($row = $result->fetch_assoc()):
+                // Veritabanından çekilen not ve IV şifre çözme için kullanılıyor
+                $decrypted = decryptNote($row['note'], $row['iv'], $key);
             ?>
                 <div class="note-card">
-                <?php echo nl2br(htmlspecialchars($decrypted)); ?>
-        <form method="post" action="" style="display: inline;">
-        <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
-        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-        <button type="submit" class="btn btn-link text-danger p-0 float-end" title="Sil">
-            <i class="fas fa-trash-alt"></i>
-            </button>
-        </form>
+                    <?php echo nl2br(htmlspecialchars($decrypted)); ?>
+                    <form method="post" action="" style="display: inline;">
+                        <input type="hidden" name="delete_id" value="<?php echo $row['id']; ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        <button type="submit" class="btn btn-link text-danger p-0 float-end" title="Sil">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
                 </div>
             <?php endwhile; ?>
         <?php endif; ?>
